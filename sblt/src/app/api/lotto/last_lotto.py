@@ -25,10 +25,4 @@ def max_round():
     max_numb = soup.find(name="strong", attrs={"id": "lottoDrwNo"}).text
     return int(max_numb)
 
-if __name__ == "__main__":
-    import sys
-    draw_no = int(sys.argv[1])
-    if draw_no == 0:
-        print(json.dumps({"maxRound": max_round()}))
-    else:
-        print(json.dumps(get_lotto_numbers(draw_no)))
+print(json.dumps(get_lotto_numbers(max_round())))

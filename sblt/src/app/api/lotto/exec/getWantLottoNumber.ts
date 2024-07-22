@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const { stdout, stderr } = await new Promise<ExecPromiseReturnType>((resolve, reject) => {
-      exec(`cd src/app/api/reffleKrLotto && python reffleKrLotto.py ${drawNo}`, (error, stdout, stderr) => {
+      exec(`cd src/app/api/lotto && python want_lotto.py ${drawNo}`, (error, stdout, stderr) => {
         if (error) {
           reject({ error, stderr });
           return;

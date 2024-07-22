@@ -1,5 +1,5 @@
 import { exec } from "child_process";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 interface LottoResult {
   drwNo: number;
@@ -13,16 +13,10 @@ interface ExecPromiseReturnType {
   stderr: string;
 }
 
-export async function GET(request: NextRequest) {
-  const drawNo = request.nextUrl.searchParams.get("drawNo");
-
-  if (!drawNo) {
-    return NextResponse.json({ error: "drawNo query parameter is required" }, { status: 400 });
-  }
-
+export async function GET() {
   try {
     const { stdout, stderr } = await new Promise<ExecPromiseReturnType>((resolve, reject) => {
-      exec(`cd src/app/api/getLatestKrLotto && python extractLatestKrLotto.py ${drawNo}`, (error, stdout, stderr) => {
+      exec(`cd src/app/api/lotto && python last_lotto.py`, (error, stdout, stderr) => {
         if (error) {
           reject({ error, stderr });
           return;
