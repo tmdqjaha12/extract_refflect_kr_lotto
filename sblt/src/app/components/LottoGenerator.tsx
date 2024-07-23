@@ -1,3 +1,5 @@
+"use client";
+
 const LottoGenerator = () => {
   const generateLottoNumbers = () => {
     // 로또 번호 생성 로직 추가

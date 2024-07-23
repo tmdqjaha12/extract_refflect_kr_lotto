@@ -1,3 +1,5 @@
+"use client";
+
 const SearchBar = () => {
   return (
     <div className="bg-white p-4 rounded shadow-md my-4">

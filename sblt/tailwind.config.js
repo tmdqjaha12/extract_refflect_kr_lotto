@@ -1,12 +1,8 @@
 // tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}", // 필요한 경우 추가
-    "./public/**/*.{js,ts,jsx,tsx}", // 필요한 경우 추가
-  ],
-  darkMode: false,
+  content: ["./src/**/*.{js,ts,jsx,tsx}"],
+  darkMode: "media",
   theme: {
     extend: {},
   },
