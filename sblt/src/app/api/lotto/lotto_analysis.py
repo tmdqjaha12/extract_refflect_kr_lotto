@@ -57,60 +57,110 @@ def preprocess_data(numbers):
     X = np.array(X)
     y = np.array(y)
 
+    # Check if the data shape is consistent
+    if len(X.shape) != 2 or X.shape[1] != 7:
+        raise ValueError("Input data is not in the correct shape.")
+
     return X, y
 
 # 모델을 학습하거나 기존 모델을 불러옵니다.
-def train_or_load_model(X, y, model_file):
-    if os.path.exists(model_file):
-        model = load_model(model_file, compile=False)
-        model.compile(optimizer='adam', loss='mse')
-        print("Loaded model from disk and recompiled")
-    else:
-        model = Sequential()
-        model.add(LSTM(50, activation='relu', input_shape=(X.shape[1], X.shape[2])))
-        model.add(Dense(7))
-        model.compile(optimizer='adam', loss='mse')
-        print("Created a new model")
+def train_or_load_model(X, y, model_file, lstm_units=50, epochs=100, batch_size=10):
+    try:
+        if os.path.exists(model_file):
+            # 모델 불러오기
+            model = load_model(model_file)
+            print("Loaded model from disk")
+        else:
+            # 새로운 모델 생성
+            model = Sequential()
+            model.add(LSTM(lstm_units, activation='relu', input_shape=(X.shape[1], 1)))
+            model.add(Dense(7))
+            print("Created a new model")
 
-    model.fit(X, y, epochs=100, batch_size=10, verbose=1)
-    model.save(model_file)
-    print("Saved model to disk")
+        # 모델 컴파일
+        model.compile(optimizer='adam', loss='mse')
 
-    return model
+        # 모델 학습
+        model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=1)
+
+        # 모델 저장
+        model.save(model_file)
+        print("Saved model to disk")
+
+        return model
+    except Exception as e:
+        print(f"Error in training or loading the model: {e}")
+        sys.exit(1)
 
 # 다음 회차의 로또 번호를 예측합니다.
 def predict_next_numbers(model, last_input):
-    last_input = last_input.astype(np.float32)
-    predicted_numbers = model.predict(last_input)
-    predicted_numbers = np.round(predicted_numbers).astype(int)
-    return predicted_numbers
+    try:
+        last_input = last_input.astype(np.float32)
+        predicted_numbers = model.predict(last_input)
+        predicted_numbers = np.round(predicted_numbers).astype(int)
+
+        # Ensure predicted numbers are within the lotto range
+        predicted_numbers = np.clip(predicted_numbers, 1, 45)
+
+        return predicted_numbers
+    except Exception as e:
+        print(f"Error in predicting the numbers: {e}")
+        sys.exit(1)
 
 def save_to_firestore(data_type, data_type_args, numbers, user_id, round_number):
-    now = datetime.utcnow()
-    numbers_list = numbers.flatten().tolist()
-    collection_ref = db.collection('raffle_lotto_numbers')
+    try:
+        now = datetime.utcnow()
+        numbers_list = numbers.flatten().tolist()
+        collection_ref = db.collection('raffle_lotto_numbers')
 
-    doc_ref = collection_ref.add({
-        'type': data_type,
-        'type_args': data_type_args,
-        'date': now.strftime('%Y/%m/%d %H:%M:%S'),
-        'numbers': numbers_list,
-        'id': user_id,
-        'round': round_number,
-        'winning_flag': False,
-        'winning_rank': None,
-        'winning_amount': None
-    })
-    
-    print(f"Data saved to Firestore with document ID: {doc_ref[1].id}")
+        doc_ref = collection_ref.add({
+            'type': data_type,
+            'type_args': data_type_args,
+            'date': now.strftime('%Y/%m/%d %H:%M:%S'),
+            'numbers': numbers_list,
+            'id': user_id,
+            'round': round_number,
+            'winning_flag': False,
+            'winning_rank': None,
+            'winning_amount': None,
+            'meta': {
+                'model': 'LSTM',
+                'units': 50,
+                'epochs': 100,
+                'batch_size': 10
+            }
+        })
+        
+        print(f"Data saved to Firestore with document ID: {doc_ref[1].id}")
+    except Exception as e:
+        print(f"Error in saving to Firestore: {e}")
 
 def max_round():
-    url = "https://dhlottery.co.kr/common.do?method=main"
-    response = requests.get(url)
-    html = response.text
-    soup = BeautifulSoup(html, "lxml")
-    max_numb = soup.find(name="strong", attrs={"id": "lottoDrwNo"}).text
-    return int(max_numb)
+    try:
+        url = "https://dhlottery.co.kr/common.do?method=main"
+        response = requests.get(url)
+        html = response.text
+        soup = BeautifulSoup(html, "lxml")
+        max_numb = soup.find(name="strong", attrs={"id": "lottoDrwNo"}).text
+        return int(max_numb)
+    except Exception as e:
+        print(f"Error in getting max round number: {e}")
+        sys.exit(1)
+
+def get_actual_numbers(round_number):
+    try:
+        url = f"https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo={round_number}"
+        response = requests.get(url)
+        data = response.json()
+        return [data[f"drwtNo{i}"] for i in range(1, 7)] + [data["bnusNo"]]
+    except Exception as e:
+        print(f"Error in getting actual numbers: {e}")
+        sys.exit(1)
+
+def compare_numbers(predicted, actual):
+    correct_numbers = len(set(predicted) & set(actual[:6]))
+    bonus_match = actual[6] in predicted
+    return correct_numbers, bonus_match
 
 def main():
     parser = argparse.ArgumentParser(description="Process lotto data.")
@@ -121,10 +171,17 @@ def main():
     parser.add_argument("--week", type=int, help="Week for the data")
     parser.add_argument("--id", type=str, help="Id for User")
     parser.add_argument("--n_iter", type=int, default=1, help="Number of iterations to predict")
+    parser.add_argument("--lstm_units", type=int, default=50, help="Number of LSTM units")
+    parser.add_argument("--epochs", type=int, default=100, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=10, help="Training batch size")
 
     args = parser.parse_args()
 
-    df = read_lotto_data_from_local()
+    try:
+        df = read_lotto_data_from_local()
+    except Exception as e:
+        print(f"Error in reading lotto data: {e}")
+        sys.exit(1)
 
     if args.type == 1:
         result = get_all_numbers(df)
@@ -149,7 +206,7 @@ def main():
     X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
 
     model_file = './lotto_model.keras'
-    model = train_or_load_model(X, y, model_file)
+    model = train_or_load_model(X, y, model_file, lstm_units=args.lstm_units, epochs=args.epochs, batch_size=args.batch_size)
 
     last_input = np.array(result[-1]).reshape((1, 1, 7)).astype(np.float32)
 
@@ -162,6 +219,12 @@ def main():
         save_to_firestore(args.type, type_args, predicted_numbers, args.id, max_draw_no + 1)
 
         last_input = predicted_numbers.reshape((1, 1, 7)).astype(np.float32)
+
+    # Compare the last predicted numbers with the actual numbers
+    actual_numbers = get_actual_numbers(max_draw_no)
+    correct_numbers, bonus_match = compare_numbers(predicted_numbers[0], actual_numbers)
+    print(f"Actual Numbers: {actual_numbers}")
+    print(f"Correct Numbers: {correct_numbers}, Bonus Match: {bonus_match}")
 
     print(json.dumps(result))
 
