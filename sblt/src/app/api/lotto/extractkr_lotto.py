@@ -1,6 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 from firestore_util import save_lotto_data_locally, load_lotto_data_locally
+import json
+
+file_path="./src/app/api/lotto/lotto_results.json"
 
 def get_lotto_numbers(draw_no):
     """
@@ -30,6 +33,7 @@ def get_lotto_numbers(draw_no):
         
     except requests.exceptions.RequestException as e:
         print(f"오류가 발생했습니다: {e}")
+        return None
 
 def maxRound():
     """
@@ -44,18 +48,48 @@ def maxRound():
     max_numb = soup.find(name="strong", attrs={"id": "lottoDrwNo"}).text
     return int(max_numb)
 
-# 로컬 파일에서 가장 큰 drwNo 값을 가져옵니다.
+def load_lotto_data_locally():
+    """
+    로컬 JSON 파일에서 로또 데이터를 불러옵니다.
+
+    Returns:
+        list: 로컬 파일에 저장된 로또 데이터 리스트
+    """
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            # print("로컬 파일에서 불러온 데이터:", data)  # 데이터 확인용 출력
+            return data
+    except FileNotFoundError:
+        print("로컬 파일이 존재하지 않습니다.")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"JSON 디코딩 오류가 발생했습니다: {e}")
+        return []
+
 def get_latest_draw_number_from_local():
+    """
+    로컬 파일에서 가장 최신의 회차 번호를 가져옵니다.
+
+    Returns:
+        int: 로컬 파일에 저장된 최신 회차 번호
+    """
     data = load_lotto_data_locally()
+    
     if data:
-        return max(data, key=lambda x: x['draw_no'])['draw_no']
+        latest_draw_no = max(data, key=lambda x: x['draw_no'])['draw_no']
+        print("최신 회차 번호:", latest_draw_no)  # 최신 회차 번호 확인용 출력
+        return latest_draw_no
+    
+    print("로컬 파일이 비어 있거나 데이터를 읽지 못했습니다.")
     return None
 
 # 최신 회차 번호를 가져옵니다.
-maxCount = maxRound()
+maxCount = maxRound() 
 
 # 로컬 파일에서 가장 큰 drwNo 값을 가져옵니다.
 latest_draw_no = get_latest_draw_number_from_local()
+print(latest_draw_no)
 
 # 만약 데이터가 없다면 1회차부터 최신 회차까지 조회
 if latest_draw_no is None:
@@ -64,7 +98,7 @@ else:
     start_round = latest_draw_no + 1
 
 # 로컬 파일에서 데이터를 가져옵니다.
-local_data = load_lotto_data_locally()
+local_data = load_lotto_data_locally() if latest_draw_no else []
 
 # start_round부터 최신 회차까지 반복하여 데이터를 가져옵니다.
 for draw_no in range(start_round, maxCount + 1):

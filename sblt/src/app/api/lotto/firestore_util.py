@@ -5,6 +5,8 @@ from firebase_admin import credentials, firestore
 import pandas as pd
 import json
 
+file_path="./src/app/api/lotto/lotto_results.json"
+
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
@@ -34,7 +36,7 @@ def save_lotto_data_locally(data):
     Args:
         data (list): 저장할 로또 데이터 리스트
     """
-    with open('lotto_results.json', 'w') as f:
+    with open(file_path, 'w') as f:
         json.dump(data, f)
 
 def load_lotto_data_locally():
@@ -44,8 +46,8 @@ def load_lotto_data_locally():
     Returns:
         list: 로컬 파일에 저장된 로또 데이터 리스트
     """
-    if os.path.exists('lotto_results.json'):
-        with open('lotto_results.json', 'r') as f:
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
             return json.load(f)
     return []
 

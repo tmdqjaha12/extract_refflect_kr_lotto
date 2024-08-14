@@ -1,20 +1,35 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import useLotto from "../hooks/useLotto";
 
 const LottoGenerator = () => {
-  const { selectRound, selectTypeArgs, TYPE_ARGS_LABEL } = useLotto();
+  const { selectRound, selectTypeArgs, TYPE_ARGS_LABEL, getAnalysisLottoNumber } = useLotto();
 
-  const { register, handleSubmit, setValue, watch } = useForm({
+  const { register, handleSubmit, setValue, watch, getValues } = useForm({
     mode: "all",
     criteriaMode: "firstError",
     shouldFocusError: true,
   });
 
   const generateLottoNumbers = () => {
-    // 로또 번호 생성 로직 추가
+    const { type, typeArgs } = getValues();
+    console.log(type);
+    console.log(typeArgs);
+    // getAnalysisLottoNumber({
+    //   type: type,
+    //   typeArgs
+    // })
   };
+
+  const type = watch("type");
+
+  useEffect(() => {
+    if (type === 1) {
+      setValue("typeArgs", "");
+    }
+  }, type);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md my-4 max-w-md mx-auto">
@@ -39,7 +54,7 @@ const LottoGenerator = () => {
         </select>
 
         {watch("type") && watch("type") != "1" ? (
-          <select className="block w-full border border-gray-300 rounded-lg p-2 mb-2l" {...register("type_args")}>
+          <select className="block w-full border border-gray-300 rounded-lg p-2 mb-2l" {...register("typeArgs")}>
             <option value="">{TYPE_ARGS_LABEL[watch("type") as "2" | "3" | "4" | "5"].label}</option>
             {selectTypeArgs[TYPE_ARGS_LABEL[watch("type") as "2" | "3" | "4" | "5"].argsKey].map((number, index) => (
               <option key={`select-type-args-${index}`} value={number}>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface PastLottoNumber {
   bonus: number;
@@ -19,8 +20,44 @@ interface TypeArgsLabel {
   argsKey: TypeArgsLabelKey;
 }
 
+interface AnalysisLottoNumberArgs {
+  type: number;
+  typeArgs?: number;
+  id?: string;
+}
+
 const useLotto = () => {
   const [selectRound, setSelectRound] = useState<number[]>([]);
+
+  const generateGuestId = () => {
+    return uuidv4();
+  };
+
+  const getAnalysisLottoNumber = useCallback((variables: AnalysisLottoNumberArgs) => {
+    fetch("/api/lotto/exec/getExtractLottoNumber", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: variables.type,
+        typeArgs: variables?.typeArgs,
+        id: variables?.id ?? generateGuestId(),
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return res.json(); // JSON으로 응답을 변환
+      })
+      .then((data?: any) => {
+        console.log("data: ", data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, []);
 
   const getPastLottoNumbers = useCallback(() => {
     fetch("/api/lotto/exec/getPastLottoNumbers")
@@ -98,7 +135,7 @@ const useLotto = () => {
     getPastLottoNumbers();
   }, [getPastLottoNumbers]);
 
-  return { selectRound, selectTypeArgs, TYPE_ARGS_LABEL };
+  return { selectRound, selectTypeArgs, TYPE_ARGS_LABEL, getAnalysisLottoNumber };
 };
 
 export default useLotto;
